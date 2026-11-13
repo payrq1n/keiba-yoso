@@ -442,6 +442,131 @@ function markTable4Html(mc){
   });
   return h+'</table></div>';
 }
+var BAND_LABELS=['0–2%','2–5%','5–10%','10–20%','20–30%','30–50%','50%超'];
+function bandIdx(w){if(w>=50)return 6;if(w>=30)return 5;if(w>=20)return 4;if(w>=10)return 3;if(w>=5)return 2;if(w>=2)return 1;return 0;}
+function winnerDist(rs){
+  var d=[0,0,0,0];
+  rs.forEach(function(r){
+    var res=resOf(r);if(!res||!res.finish)return;
+    var wn=null;res.finish.forEach(function(f){if(f.pos===1)wn=f.n;});
+    if(wn==null)return;
+    var idx=-1;for(var i=0;i<r.horses.length;i++){if(r.horses[i].n===wn){idx=i+1;break;}}
+    if(idx<0)return;
+    d[idx===1?0:idx<=3?1:idx<=6?2:3]++;
+  });
+  return d;
+}
+function winnerDistTableHtml(d){
+  var t=0;d.forEach(function(x){t+=x;});
+  var h='<div class="vtablewrap"><table class="vtable"><tr><th class="n">1位</th><th class="n">2〜3位</th><th class="n">4〜6位</th><th class="n">7位以下</th><th class="n">合計</th></tr><tr>';
+  d.forEach(function(x){h+='<td class="n num">'+x+'</td>';});
+  return h+'<td class="n num">'+t+'</td></tr></table></div>';
+}
+function calibCounts(rs){
+  var cnt=[0,0,0,0,0,0,0],wn=[0,0,0,0,0,0,0];
+  rs.forEach(function(r){
+    var res=resOf(r);if(!res)return;
+    var fin={};(res.finish||[]).forEach(function(f){fin[f.n]=f.pos;});
+    r.horses.forEach(function(hs){var i=bandIdx(hs.win);cnt[i]++;if(fin[hs.n]===1)wn[i]++;});
+  });
+  return {cnt:cnt,wn:wn};
+}
+function calibTableHtml(cc){
+  var h='<div class="vtablewrap"><table class="vtable"><tr><th>勝率帯</th><th class="n">頭数</th><th class="n">勝ち数</th><th class="n">実勝率</th></tr>';
+  BAND_LABELS.forEach(function(lab,i){
+    h+='<tr><td class="num">'+lab+'</td><td class="n num">'+cc.cnt[i]+'</td><td class="n num">'+cc.wn[i]+'</td><td class="n num">'+(cc.cnt[i]?(cc.wn[i]/cc.cnt[i]*100).toFixed(1)+'%':'—')+'</td></tr>';
+  });
+  return h+'</table></div>';
+}
+function ticketCounts(rs){
+  var q=0,wd=0,tr=0;
+  rs.forEach(function(r){var res=resOf(r);var j=res&&res.judge;if(!j)return;if(j.q)q++;if(j.wd)wd++;if(j.tr)tr++;});
+  return {n:rs.length,q:q,wd:wd,tr:tr};
+}
+function ticketTableHtml(rs){
+  var t=ticketCounts(rs);
+  return '<div class="vtablewrap"><table class="vtable"><tr><th class="n">対象レース</th><th class="n">馬連</th><th class="n">ワイド</th><th class="n">三連複</th></tr>'
+    +'<tr><td class="n num">'+t.n+'</td><td class="n num">'+t.q+'</td><td class="n num">'+t.wd+'</td><td class="n num">'+t.tr+'</td></tr></table></div>';
+}
+function crossCounts(rs){
+  var cc=MARKS6.map(function(){return [[0,0],[0,0],[0,0],[0,0]];});
+  rs.forEach(function(r){
+    var res=resOf(r);if(!res||!res.finish)return;
+    var fin={};res.finish.forEach(function(f){fin[f.n]=f;});
+    var hs=r.horses.slice().sort(function(a,b){return b.win-a.win;});
+    for(var i=0;i<MARKS6.length&&i<hs.length;i++){
+      var f=fin[hs[i].n];
+      if(!f||f.pop==null)continue;
+      var col=f.pop===1?0:f.pop<=3?1:f.pop<=6?2:3;
+      cc[i][col][0]++;
+      if(f.pos===1)cc[i][col][1]++;
+    }
+  });
+  return cc;
+}
+function crossTableHtml(cc){
+  var h='<div class="vtablewrap"><table class="vtable marktable"><tr><th>印</th><th class="n">1番人気</th><th class="n">2〜3番人気</th><th class="n">4〜6番人気</th><th class="n">7番人気以下</th></tr>';
+  MARKS6.forEach(function(mk,mi){
+    h+='<tr><td class="mk'+(mi===0?' first':'')+'">'+mk+'</td>';
+    cc[mi].forEach(function(c){h+='<td class="n num">'+c[0]+'（1着'+c[1]+'）</td>';});
+    h+='</tr>';
+  });
+  return h+'</table></div>';
+}
+function dateVenueBlocks(settled,innerFn){
+  var h='';
+  DAYS.forEach(function(d){
+    var drs=settled.filter(function(r){return r.date===d;});
+    if(!drs.length)return;
+    h+='<h4 class="dvdate">'+fmtDateLabel(d)+' <span class="num" style="font-size:12px;font-weight:400;color:var(--dim)">'+d+'</span> ・ 確定 <span class="num">'+drs.length+'</span> レース</h4>';
+    var dvenues=[];drs.forEach(function(r){if(dvenues.indexOf(r.venue)<0)dvenues.push(r.venue);});
+    dvenues.forEach(function(v){
+      var rs=drs.filter(function(r){return r.venue===v;});
+      h+='<h5 class="markh">'+esc(v)+'（確定<span class="num">'+rs.length+'</span>レース）</h5>';
+      h+=innerFn(rs);
+    });
+  });
+  return h;
+}
+function extraViewsHtml(settled){
+  var h='';
+  h+='<h3 class="rech">勝ち馬の順位分布</h3>'
+    +'<p class="vmeta">勝ち馬（1着）が予想勝率の順位で何位だったかの内訳です。</p>'
+    +'<h4 class="markh">累計（確定<span class="num">'+settled.length+'</span>レース）</h4>'
+    +winnerDistTableHtml(winnerDist(settled))
+    +dateVenueBlocks(settled,function(rs){return winnerDistTableHtml(winnerDist(rs));});
+  h+='<h3 class="rech">勝率帯域キャリブレーション</h3>'
+    +'<p class="vmeta">予測勝率と実際の勝率のズレを見るための表です</p>'
+    +'<h4 class="markh">累計（全場）</h4>'
+    +calibTableHtml(calibCounts(settled));
+  var venues=[];settled.forEach(function(r){if(venues.indexOf(r.venue)<0)venues.push(r.venue);});
+  venues.forEach(function(v){
+    var rs=settled.filter(function(r){return r.venue===v;});
+    h+='<h4 class="markh">'+esc(v)+'（確定<span class="num">'+rs.length+'</span>レース）</h4>';
+    h+=calibTableHtml(calibCounts(rs));
+  });
+  var two=settled.filter(function(r){return (r.name||'').indexOf('2歳')>=0;});
+  h+='<h3 class="rech">2歳戦の成績（確定<span class="num">'+two.length+'</span>レース）</h3>'
+    +'<p class="vmeta">レース名に『2歳』を含むレースのみを集計しています。</p>';
+  if(two.length){
+    h+='<h4 class="markh">累計</h4>'+markTableHtml(markCounts(two))+ticketTableHtml(two);
+    DAYS.forEach(function(d){
+      var rs=two.filter(function(r){return r.date===d;});
+      if(!rs.length)return;
+      h+='<h4 class="dvdate">'+fmtDateLabel(d)+' <span class="num" style="font-size:12px;font-weight:400;color:var(--dim)">'+d+'</span> ・ 2歳戦 確定 <span class="num">'+rs.length+'</span> レース</h4>';
+      h+=markTableHtml(markCounts(rs))+ticketTableHtml(rs);
+    });
+  }
+  h+='<h3 class="rech">券種別的中（日別×競馬場別）</h3>'
+    +'<p class="vmeta">馬連・ワイド・三連複は、いずれもモデル上位組み合わせの的中回数です。</p>'
+    +'<h4 class="markh">累計（確定<span class="num">'+settled.length+'</span>レース）</h4>'
+    +ticketTableHtml(settled)
+    +dateVenueBlocks(settled,function(rs){return ticketTableHtml(rs);});
+  h+='<h3 class="rech">印×人気クロス</h3>'
+    +crossTableHtml(crossCounts(settled))
+    +'<p class="vmeta">各セルは「頭数（1着の回数）」です。着順が付いていない、または人気の記録が無い印の馬は集計から除いています。</p>';
+  return h;
+}
 function renderRecord(){
   var el=document.getElementById('recordView');
   var settled=DATA.races.filter(function(r){return resOf(r)&&resOf(r).judge;});
@@ -488,6 +613,7 @@ function renderRecord(){
       h+=markTableHtml(markCounts(rs));
     });
   }
+  h+=extraViewsHtml(settled);
   h+='<h3 class="rech">日別</h3><ul class="bydate">';
   DAYS.forEach(function(d){
     var rs=DATA.races.filter(function(r){return r.date===d&&resOf(r)&&resOf(r).judge;});
