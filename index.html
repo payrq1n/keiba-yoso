@@ -183,6 +183,13 @@ footer.site p{margin:0 0 6px}
 .backlink{margin-top:14px;border:none;background:none;padding:4px 0;font-size:14px;font-weight:600;color:var(--accent);text-align:left;min-height:28px}
 .chiprow{padding-top:12px}
 .hidden{display:none}
+.spot{margin-top:12px;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:10px 14px 12px}
+.spot-h{margin:0;font-size:15px;font-weight:700}
+.spot-grid{display:grid;gap:2px 24px}
+@media(min-width:640px){.spot-grid{grid-template-columns:1fr 1fr}}
+.spot h4{margin:8px 0 2px;font-size:13px;font-weight:700;color:var(--accent)}
+.spot ol{margin:0;padding-left:20px;font-size:13.5px;line-height:1.65}
+.spot .sub{color:var(--dim);font-size:12.5px}
 </style>
 </head>
 <body>
@@ -213,6 +220,7 @@ footer.site p{margin:0 0 6px}
     <button type="button" class="tabbtn" id="tabWeek" aria-pressed="false">週間</button>
     <button type="button" class="tabbtn" id="tabRecord" aria-pressed="false">成績</button>
     <button type="button" class="tabbtn" id="tabAnalysis" aria-pressed="false">分析</button>
+    <button type="button" class="tabbtn" id="tabModel" aria-pressed="false">モデル</button>
   </div>
   <nav class="datetabs" id="dateTabs" aria-label="日付タブ"></nav>
 </div></header>
@@ -226,6 +234,27 @@ footer.site p{margin:0 0 6px}
   <section id="recordView" class="hidden" aria-label="通算成績・検証"></section>
   <section id="weekView" class="hidden" aria-label="週間成績"></section>
   <section id="analysisView" class="hidden" aria-label="分析"></section>
+  <section id="modelView" class="hidden" aria-label="モデルについて">
+    <h3 class="rech">モデルについて</h3>
+    <p class="vtext">このサイトの予想は、主催者の公式データをもとに、4つの段階で生成しています。</p>
+    <p class="vtext"><strong>01 Core Analysis（基礎評価）</strong>：各馬の過去走を、クラス基準値から着差ペナルティと斤量補正を差し引いて点数化します。直近5走の加重平均が基礎能力 AS、距離・コース・馬場・斤量への適性を評価したものが AAR、その合計が条件適用後の能力 APS です。</p>
+    <p class="vtext"><strong>02 Race Environment（レース環境）</strong>：過去走の通過順から脚質を分類し、ペース（スロー／ミドル／ハイ）の発生確率を見積もります。さらに、その競馬場の直近開催日の結果から馬場バイアス（前残り・内伸びなど）を推定します。証拠が薄い場合は中立とし、推測で補正は作りません。</p>
+    <p class="vtext"><strong>03 Race Simulation（シミュレーション）</strong>：入力を固定（LOCK）したうえで、10万回のモンテカルロ・シミュレーションを行い、各馬の勝率・連対率・3着内率と、馬連・ワイド・三連複の組み合わせ確率を計算します。</p>
+    <p class="vtext"><strong>04 Prediction &amp; Validation（予想と検証）</strong>：予想は必ず発走前にLOCKして公開します。発走に間に合わなかったレースは『見送り』として記録し、結果が出たあとに予想を追加することはありません。確定結果とは毎回照合し、勝ち馬の順位分布や勝率の帯域ごとの的中度を検証しています。方式の変更は、過去データでのバックテストで旧方式を上回った場合にのみ採用します。</p>
+    <p class="vtext">現在の方式：地方競馬（NAR）は v2（適性補正 AAR の合計を ±2.5 に制限、馬ごとの分散の個別化、安定型の分散縮小）に、馬場バイアス推定とクラス基準値 par3 lift を組み合わせています（2026-11-14から）。中央競馬（JRA）はフル v2 です（2026-11-14から）。</p>
+    <p class="vtext">対象範囲：中央競馬（JRA）と地方競馬（NAR）の全レースです。ただし帯広（ばんえい競馬）は対象外です。</p>
+    <h3 class="rech">変更履歴</h3>
+    <div class="vtablewrap"><table class="vtable">
+      <tr><th>日付</th><th>変更内容</th><th>根拠</th></tr>
+      <tr><td class="num" style="white-space:nowrap">2026-11-07</td><td>モデル v2 を策定・実装</td><td>高知3レースの検証で、適性補正の効きすぎと確率の過信が判明したため（AAR合計クリップ ±2.5、地方の分散拡大、安定型の分散縮小）</td></tr>
+      <tr><td class="num" style="white-space:nowrap">2026-11-08</td><td>v1.1 キャリブレーションを適用し、アルゼンチン共和国杯でパイロット予想</td><td>モデルの1位組合せで馬連・ワイドが的中し、4段階フローの土台を検証</td></tr>
+      <tr><td class="num" style="white-space:nowrap">2026-11-11</td><td>全レース運用を開始</td><td>中央・地方の全レースを毎日生成し、発走前LOCKと確定結果との照合を標準運用に（帯広は対象外）</td></tr>
+      <tr><td class="num" style="white-space:nowrap">2026-11-12</td><td>馬場バイアス推定を毎日の生成に組み込み</td><td>直近開催日の結果から競馬場ごとに推定し、証拠が薄い日は中立とする方式に</td></tr>
+      <tr><td class="num" style="white-space:nowrap">2026-11-12</td><td>中央競馬（JRA）へのフル v2 適用を決定</td><td>11月14日のJRAレースから適用</td></tr>
+      <tr><td class="num" style="white-space:nowrap">2026-11-13</td><td>クラス基準値を見直し、par3 lift を地方に採用</td><td>地方96レースのバックテストで旧方式を上回ったため（勝ち馬が7位以下に沈んだレース 37→32件、Brierスコア 0.956→0.922）。11月14日から適用</td></tr>
+      <tr><td class="num" style="white-space:nowrap">2026-11-13</td><td>公開ページを GitHub Pages に移行</td><td>承認なしで毎時自動更新できる運用に変更</td></tr>
+    </table></div>
+  </section>
 </main>
 <footer class="site">
 <p>このページは公開用スナップショットです（2026-11-13 22:03 JST 時点）。データは作成時点のもので固定されており、最新データは日々更新される元のサイト側にあります。</p>
@@ -242,6 +271,9 @@ DAYS.sort();DAYS.reverse();
 var state={tab:'races',date:DAYS[0],venue:null};
 var markMode='total';
 var markDate=null;
+var roiMode='date';
+var roiDate=null;
+var roiVenue=null;
 function rkey(r){return r.date+'|'+r.venue+'|'+r.no;}
 function resOf(r){return DATA.results[rkey(r)]||null;}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -263,6 +295,7 @@ function renderHeader(){
   document.getElementById('tabWeek').setAttribute('aria-pressed',state.tab==='week'?'true':'false');
   document.getElementById('tabRecord').setAttribute('aria-pressed',state.tab==='record'?'true':'false');
   document.getElementById('tabAnalysis').setAttribute('aria-pressed',state.tab==='analysis'?'true':'false');
+  document.getElementById('tabModel').setAttribute('aria-pressed',state.tab==='model'?'true':'false');
   var dt=document.getElementById('dateTabs');
   if(state.tab==='races'){
     dt.classList.remove('hidden');
@@ -280,6 +313,7 @@ document.getElementById('tabRaces').onclick=function(){state.tab='races';render(
 document.getElementById('tabRecord').onclick=function(){state.tab='record';render();};
 document.getElementById('tabWeek').onclick=function(){state.tab='week';render();};
 document.getElementById('tabAnalysis').onclick=function(){state.tab='analysis';render();};
+document.getElementById('tabModel').onclick=function(){state.tab='model';render();};
 document.getElementById('reloadBtn').onclick=function(){location.reload();};
 
 function statusBadge(r){
@@ -373,6 +407,35 @@ function cardHtml(r){
   }
   return h+'</article>';
 }
+function spotHtml(races){
+  var withH=races.filter(function(r){return r.horses&&r.horses.length;});
+  if(!withH.length)return '';
+  var top=withH.slice().sort(function(a,b){return b.horses[0].win-a.horses[0].win;}).slice(0,3);
+  var cands=[];
+  races.forEach(function(r){
+    var res=resOf(r);if(!res||!res.finish)return;
+    var rank={};r.horses.forEach(function(hs,i){rank[hs.n]={rk:i+1,hs:hs};});
+    res.finish.forEach(function(f){
+      if(f.pop==null)return;var info=rank[f.n];if(!info)return;
+      cands.push({div:f.pop-info.rk,r:r,f:f,rk:info.rk,hs:info.hs});
+    });
+  });
+  cands.sort(function(a,b){return b.div-a.div;});
+  var myomi=cands.slice(0,3);
+  var h='<section class="spot" aria-label="本日の注目"><h3 class="spot-h">本日の注目</h3><div class="spot-grid"><div><h4>勝負レース（◎の勝率が高い順）</h4><ol>';
+  top.forEach(function(r){
+    h+='<li><span class="num">'+esc(r.venue)+' '+r.no+'R</span> '+esc(r.name||'')+'<br><span class="sub">◎ '+esc(r.horses[0].nm)+' ・ 勝率 </span><span class="num">'+pct(r.horses[0].win)+'</span></li>';
+  });
+  h+='</ol></div>';
+  if(myomi.length){
+    h+='<div><h4>妙味（モデルと人気の乖離が大きい順）</h4><ol>';
+    myomi.forEach(function(c){
+      h+='<li><span class="num">'+esc(c.r.venue)+' '+c.r.no+'R</span> '+esc(c.hs.nm)+'<br><span class="sub">モデル'+c.rk+'位 ・ 勝率 </span><span class="num">'+pct(c.hs.win)+'</span><span class="sub"> ／ </span><span class="num">'+c.f.pop+'人気</span><span class="sub"> ・ </span><span class="num">'+c.f.pos+'着</span></li>';
+    });
+    h+='</ol></div>';
+  }
+  return h+'</div></section>';
+}
 function renderRaces(){
   var el=document.getElementById('raceView');
   var races=dayRaces();
@@ -380,7 +443,7 @@ function renderRaces(){
   var validated=races.filter(function(r){return resOf(r);}).length;
   var skipped=races.filter(function(r){return r.status&&r.status.indexOf('見送り')>=0;}).length;
   var courses=[];races.forEach(function(r){if(courses.indexOf(r.venue)<0)courses.push(r.venue);});
-  var h='<section aria-label="その日の概要" class="daysum"><span>全 <strong class="num">'+races.length+'</strong> レース</span><span>LOCK済 <strong class="num">'+locked+'</strong></span>';
+  var h=spotHtml(races)+'<section aria-label="その日の概要" class="daysum"><span>全 <strong class="num">'+races.length+'</strong> レース</span><span>LOCK済 <strong class="num">'+locked+'</strong></span>';
   if(skipped>0)h+='<span>見送り <strong class="num">'+skipped+'</strong></span>';
   if(validated>0)h+='<span>検証済 <strong class="num">'+validated+'</strong></span>';
   h+='<span class="courses">'+courses.map(esc).join('・')+'</span></section>';
@@ -637,6 +700,50 @@ function renderAnalysis(){
   el.querySelectorAll('[data-atwo]').forEach(function(b){b.onclick=function(){anaSel.two=b.getAttribute('data-atwo');renderAnalysis();};});
   el.querySelectorAll('[data-atk]').forEach(function(b){b.onclick=function(){anaSel.tk=b.getAttribute('data-atk');renderAnalysis();};});
 }
+var ROI_TYPES=[
+  {key:'tan',label:'◎単勝',pay:'単勝'},
+  {key:'fuku',label:'◎複勝',pay:'複勝'},
+  {key:'q',label:'馬連',pay:'馬連'},
+  {key:'wd',label:'ワイド',pay:'ワイド'},
+  {key:'tr',label:'三連複',pay:'三連複'}
+];
+function roiStats(rs){
+  var out={};ROI_TYPES.forEach(function(t){out[t.key]={purch:0,hits:0,ret:0};});
+  rs.forEach(function(r){
+    var res=resOf(r);if(!res||!res.payouts||!res.judge)return;
+    var j=res.judge;
+    var byLabel={};res.payouts.forEach(function(p){if(!byLabel[p.label])byLabel[p.label]=[];byLabel[p.label].push(p);});
+    ROI_TYPES.forEach(function(t){
+      var pays=byLabel[t.pay];if(!pays||!pays.length)return;
+      var s=out[t.key];s.purch++;
+      if(t.key==='tan'){
+        if(j.honmeiPos===1){s.hits++;s.ret+=pays[0].amount;}
+      }else if(t.key==='fuku'){
+        if(r.horses&&r.horses.length){
+          var hn=String(r.horses[0].n);
+          for(var i=0;i<pays.length;i++){if(pays[i].combo===hn){s.hits++;s.ret+=pays[i].amount;break;}}
+        }
+      }else{
+        var top=r[t.key]&&r[t.key][0];
+        if(top&&top.h){
+          var combo=top.h.slice().sort(function(a,b){return a-b;}).join('-');
+          for(var i=0;i<pays.length;i++){if(pays[i].combo===combo&&j[t.key]){s.hits++;s.ret+=pays[i].amount;break;}}
+        }
+      }
+    });
+  });
+  return out;
+}
+function roiTableHtml(st){
+  var h='<div class="vtablewrap"><table class="vtable"><tr><th>券種</th><th class="n">購入</th><th class="n">的中</th><th class="n">的中率</th><th class="n">投資額</th><th class="n">払戻額</th><th class="n">回収率</th></tr>';
+  ROI_TYPES.forEach(function(t){
+    var s=st[t.key];var inv=s.purch*100;
+    var hr=s.purch?(s.hits/s.purch*100).toFixed(1)+'%':'—';
+    var roi=s.purch?(s.ret/inv*100).toFixed(1)+'%':'—';
+    h+='<tr><td>'+t.label+'</td><td class="n num">'+s.purch+'</td><td class="n num">'+s.hits+'</td><td class="n num">'+hr+'</td><td class="n num">'+inv.toLocaleString()+'円</td><td class="n num">'+s.ret.toLocaleString()+'円</td><td class="n num"'+(s.purch&&s.ret>=inv?' style="font-weight:700;color:var(--red)"':'')+'>'+roi+'</td></tr>';
+  });
+  return h+'</table></div>';
+}
 function renderRecord(){
   var el=document.getElementById('recordView');
   var settled=DATA.races.filter(function(r){return resOf(r)&&resOf(r).judge;});
@@ -684,6 +791,32 @@ function renderRecord(){
       h+=markTableHtml(markCounts(rs));
     });
   }
+  h+='<h3 class="rech">回収率</h3>'
+    +'<p class="vnote">各券種を毎レース100円ずつ均一に購入した場合のシミュレーションです。払戻データが記録されているレースのみを対象にしています。</p>'
+    +'<h4 class="markh">累計（確定<span class="num">'+settled.length+'</span>レース）</h4>'
+    +roiTableHtml(roiStats(settled));
+  var roiVenues=[];settled.forEach(function(r){if(roiVenues.indexOf(r.venue)<0)roiVenues.push(r.venue);});
+  var selRoiDate=(roiDate&&sdates.indexOf(roiDate)>=0)?roiDate:sdates[0];
+  var selRoiVenue=(roiVenue&&roiVenues.indexOf(roiVenue)>=0)?roiVenue:roiVenues[0];
+  h+='<h4 class="markh">内訳</h4>'
+    +'<nav class="filters" aria-label="回収率の内訳切り替え" style="margin-top:8px">'
+    +'<button type="button" class="pill" data-rm="date" aria-pressed="'+(roiMode==='date')+'">日別</button>'
+    +'<button type="button" class="pill" data-rm="venue" aria-pressed="'+(roiMode==='venue')+'">競馬場別</button></nav>';
+  if(roiMode==='date'){
+    h+='<nav class="datetabs chiprow" aria-label="回収率の日付の選択">';
+    sdates.forEach(function(d){h+='<button type="button" class="dtab num" data-rd="'+d+'" aria-pressed="'+(selRoiDate===d)+'">'+fmtDateLabel(d)+'</button>';});
+    h+='</nav>';
+    var rrs=settled.filter(function(r){return r.date===selRoiDate;});
+    h+='<h5 class="markh">'+fmtDateLabel(selRoiDate)+' <span class="num" style="font-size:12px;font-weight:400;color:var(--dim)">'+selRoiDate+'</span> ・ 確定 <span class="num">'+rrs.length+'</span> レース</h5>';
+    h+=roiTableHtml(roiStats(rrs));
+  }else{
+    h+='<nav class="datetabs chiprow" aria-label="回収率の競馬場の選択">';
+    roiVenues.forEach(function(v){h+='<button type="button" class="dtab" data-rv="'+esc(v)+'" aria-pressed="'+(selRoiVenue===v)+'">'+esc(v)+'</button>';});
+    h+='</nav>';
+    var vrs2=settled.filter(function(r){return r.venue===selRoiVenue;});
+    h+='<h5 class="markh">'+esc(selRoiVenue)+' ・ 確定 <span class="num">'+vrs2.length+'</span> レース</h5>';
+    h+=roiTableHtml(roiStats(vrs2));
+  }
   h+='<h3 class="rech">日別</h3><ul class="bydate">';
   DAYS.forEach(function(d){
     var rs=DATA.races.filter(function(r){return r.date===d&&resOf(r)&&resOf(r).judge;});
@@ -728,6 +861,15 @@ function renderRecord(){
   });
   el.querySelectorAll('[data-md]').forEach(function(b){
     b.onclick=function(){markDate=b.getAttribute('data-md');renderRecord();};
+  });
+  el.querySelectorAll('[data-rm]').forEach(function(b){
+    b.onclick=function(){roiMode=b.getAttribute('data-rm');renderRecord();};
+  });
+  el.querySelectorAll('[data-rd]').forEach(function(b){
+    b.onclick=function(){roiDate=b.getAttribute('data-rd');renderRecord();};
+  });
+  el.querySelectorAll('[data-rv]').forEach(function(b){
+    b.onclick=function(){roiVenue=b.getAttribute('data-rv');renderRecord();};
   });
 }
 function mondayOf(date){var p=date.split('-').map(Number);var d=new Date(Date.UTC(p[0],p[1]-1,p[2]));var dow=(d.getUTCDay()+6)%7;d.setUTCDate(d.getUTCDate()-dow);return d;}
@@ -785,8 +927,9 @@ function renderWeek(){
 }
 function render(){
   renderHeader();
-  var rv=document.getElementById('raceView'), vv=document.getElementById('recordView'), wv=document.getElementById('weekView'), av=document.getElementById('analysisView');
-  rv.classList.add('hidden');vv.classList.add('hidden');wv.classList.add('hidden');av.classList.add('hidden');
+  var rv=document.getElementById('raceView'), vv=document.getElementById('recordView'), wv=document.getElementById('weekView'), av=document.getElementById('analysisView'), mv=document.getElementById('modelView');
+  rv.classList.add('hidden');vv.classList.add('hidden');wv.classList.add('hidden');av.classList.add('hidden');mv.classList.add('hidden');
+  if(state.tab==='model'){mv.classList.remove('hidden');return;}
   if(state.tab==='record'){vv.classList.remove('hidden');renderRecord();return;}
   if(state.tab==='analysis'){av.classList.remove('hidden');renderAnalysis();return;}
   if(state.tab==='week'){wv.classList.remove('hidden');renderWeek();return;}
