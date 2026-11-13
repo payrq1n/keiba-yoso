@@ -206,7 +206,8 @@ footer.site p{margin:0 0 6px}
   <div class="tabrow">
     <button type="button" class="tabbtn" id="tabRaces" aria-pressed="true">予想</button>
     <button type="button" class="tabbtn" id="tabWeek" aria-pressed="false">週間</button>
-    <button type="button" class="tabbtn" id="tabRecord" aria-pressed="false">通算成績・検証</button>
+    <button type="button" class="tabbtn" id="tabRecord" aria-pressed="false">成績</button>
+    <button type="button" class="tabbtn" id="tabAnalysis" aria-pressed="false">分析</button>
   </div>
   <nav class="datetabs" id="dateTabs" aria-label="日付タブ"></nav>
 </div></header>
@@ -219,6 +220,7 @@ footer.site p{margin:0 0 6px}
   <div id="raceView"></div>
   <section id="recordView" class="hidden" aria-label="通算成績・検証"></section>
   <section id="weekView" class="hidden" aria-label="週間成績"></section>
+  <section id="analysisView" class="hidden" aria-label="分析"></section>
 </main>
 <footer class="site">
 <p>このページは公開用スナップショットです（2026-11-13 22:03 JST 時点）。データは作成時点のもので固定されており、最新データは日々更新される元のサイト側にあります。</p>
@@ -254,6 +256,7 @@ function renderHeader(){
   document.getElementById('tabRaces').setAttribute('aria-pressed',state.tab==='races'?'true':'false');
   document.getElementById('tabWeek').setAttribute('aria-pressed',state.tab==='week'?'true':'false');
   document.getElementById('tabRecord').setAttribute('aria-pressed',state.tab==='record'?'true':'false');
+  document.getElementById('tabAnalysis').setAttribute('aria-pressed',state.tab==='analysis'?'true':'false');
   var dt=document.getElementById('dateTabs');
   if(state.tab==='races'){
     dt.classList.remove('hidden');
@@ -270,6 +273,7 @@ document.getElementById('nextDay').onclick=function(){var idx=DAYS.indexOf(state
 document.getElementById('tabRaces').onclick=function(){state.tab='races';render();};
 document.getElementById('tabRecord').onclick=function(){state.tab='record';render();};
 document.getElementById('tabWeek').onclick=function(){state.tab='week';render();};
+document.getElementById('tabAnalysis').onclick=function(){state.tab='analysis';render();};
 document.getElementById('reloadBtn').onclick=function(){location.reload();};
 
 function statusBadge(r){
@@ -576,6 +580,11 @@ function extraViewsHtml(settled){
     +'<p class="vmeta">各セルは「頭数（1着の回数）」です。着順が付いていない、または人気の記録が無い印の馬は集計から除いています。</p>';
   return h;
 }
+function renderAnalysis(){
+  var el=document.getElementById('analysisView');
+  var settled=DATA.races.filter(function(r){return resOf(r)&&resOf(r).judge;});
+  el.innerHTML=extraViewsHtml(settled);
+}
 function renderRecord(){
   var el=document.getElementById('recordView');
   var settled=DATA.races.filter(function(r){return resOf(r)&&resOf(r).judge;});
@@ -622,7 +631,6 @@ function renderRecord(){
       h+=markTableHtml(markCounts(rs));
     });
   }
-  h+=extraViewsHtml(settled);
   h+='<h3 class="rech">日別</h3><ul class="bydate">';
   DAYS.forEach(function(d){
     var rs=DATA.races.filter(function(r){return r.date===d&&resOf(r)&&resOf(r).judge;});
@@ -721,9 +729,10 @@ function renderWeek(){
 }
 function render(){
   renderHeader();
-  var rv=document.getElementById('raceView'), vv=document.getElementById('recordView'), wv=document.getElementById('weekView');
-  rv.classList.add('hidden');vv.classList.add('hidden');wv.classList.add('hidden');
+  var rv=document.getElementById('raceView'), vv=document.getElementById('recordView'), wv=document.getElementById('weekView'), av=document.getElementById('analysisView');
+  rv.classList.add('hidden');vv.classList.add('hidden');wv.classList.add('hidden');av.classList.add('hidden');
   if(state.tab==='record'){vv.classList.remove('hidden');renderRecord();return;}
+  if(state.tab==='analysis'){av.classList.remove('hidden');renderAnalysis();return;}
   if(state.tab==='week'){wv.classList.remove('hidden');renderWeek();return;}
   rv.classList.remove('hidden');
   renderRaces();
