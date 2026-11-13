@@ -177,6 +177,11 @@ footer.site p{margin:0 0 6px}
 .dtab[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
 .dayjump{margin-left:8px;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:2px 10px;font-size:12px;font-weight:600;min-height:28px}
 @media(max-width:560px){.tabbtn{font-size:13px;padding:4px 6px}}
+.anamenu{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.anaitem{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:12px 16px;font-size:15px;font-weight:600;color:var(--text)}
+.anaitem .arr{color:var(--dim);font-size:18px;font-weight:400}
+.backlink{margin-top:14px;border:none;background:none;padding:4px 0;font-size:14px;font-weight:600;color:var(--accent);text-align:left;min-height:28px}
+.chiprow{padding-top:12px}
 .hidden{display:none}
 </style>
 </head>
@@ -236,6 +241,7 @@ var DAYS=[];DATA.races.forEach(function(r){if(DAYS.indexOf(r.date)<0)DAYS.push(r
 DAYS.sort();DAYS.reverse();
 var state={tab:'races',date:DAYS[0],venue:null};
 var markMode='total';
+var markDate=null;
 function rkey(r){return r.date+'|'+r.venue+'|'+r.no;}
 function resOf(r){return DATA.results[rkey(r)]||null;}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -378,12 +384,13 @@ function renderRaces(){
   if(skipped>0)h+='<span>見送り <strong class="num">'+skipped+'</strong></span>';
   if(validated>0)h+='<span>検証済 <strong class="num">'+validated+'</strong></span>';
   h+='<span class="courses">'+courses.map(esc).join('・')+'</span></section>';
+  var selVenue=(state.venue&&courses.indexOf(state.venue)>=0)?state.venue:courses[0];
   if(courses.length>1){
-    h+='<nav class="filters" aria-label="競馬場で絞り込み"><button type="button" class="pill" data-venue="" aria-pressed="'+(state.venue===null)+'">全場</button>';
-    courses.forEach(function(c){h+='<button type="button" class="pill" data-venue="'+esc(c)+'" aria-pressed="'+(state.venue===c)+'">'+esc(c)+'</button>';});
+    h+='<nav class="datetabs chiprow" aria-label="競馬場の選択">';
+    courses.forEach(function(c){h+='<button type="button" class="dtab" data-venue="'+esc(c)+'" aria-pressed="'+(selVenue===c)+'">'+esc(c)+'</button>';});
     h+='</nav>';
   }
-  var visible=state.venue?races.filter(function(r){return r.venue===state.venue;}):races;
+  var visible=courses.length?races.filter(function(r){return r.venue===selVenue;}):races;
   if(!visible.length)h+='<p class="empty">この日のレースはまだ取り込まれていません。</p>';
   var groups=[];var gmap={};
   visible.forEach(function(r){if(!gmap[r.venue]){gmap[r.venue]=[];groups.push(r.venue);}gmap[r.venue].push(r);});
@@ -394,8 +401,8 @@ function renderRaces(){
     h+='</div></section>';
   });
   el.innerHTML=h;
-  el.querySelectorAll('.pill').forEach(function(b){
-    b.onclick=function(){state.venue=b.getAttribute('data-venue')||null;renderRaces();};
+  el.querySelectorAll('[data-venue]').forEach(function(b){
+    b.onclick=function(){state.venue=b.getAttribute('data-venue');renderRaces();};
   });
   el.querySelectorAll('.toggle').forEach(function(b){
     b.onclick=function(){
@@ -478,8 +485,8 @@ function winnerDistTableHtml(d){
 function calibCounts(rs){
   var cnt=[0,0,0,0,0,0,0],wn=[0,0,0,0,0,0,0];
   rs.forEach(function(r){
-    var res=resOf(r);if(!res)return;
-    var fin={};(res.finish||[]).forEach(function(f){fin[f.n]=f.pos;});
+    var res=resOf(r);if(!res||!res.finish)return;
+    var fin={};res.finish.forEach(function(f){fin[f.n]=f.pos;});
     r.horses.forEach(function(hs){if(fin[hs.n]==null)return;var i=bandIdx(hs.win);cnt[i]++;if(fin[hs.n]===1)wn[i]++;});
   });
   return {cnt:cnt,wn:wn};
@@ -526,64 +533,109 @@ function crossTableHtml(cc){
   });
   return h+'</table></div>';
 }
-function dateVenueBlocks(settled,innerFn){
-  var h='';
-  DAYS.forEach(function(d){
-    var drs=settled.filter(function(r){return r.date===d;});
-    if(!drs.length)return;
-    h+='<h4 class="dvdate">'+fmtDateLabel(d)+' <span class="num" style="font-size:12px;font-weight:400;color:var(--dim)">'+d+'</span> ・ 確定 <span class="num">'+drs.length+'</span> レース</h4>';
-    var dvenues=[];drs.forEach(function(r){if(dvenues.indexOf(r.venue)<0)dvenues.push(r.venue);});
-    dvenues.forEach(function(v){
-      var rs=drs.filter(function(r){return r.venue===v;});
-      h+='<h5 class="markh">'+esc(v)+'（確定<span class="num">'+rs.length+'</span>レース）</h5>';
-      h+=innerFn(rs);
-    });
+var ANA_VIEWS=[
+  {key:'wd',title:'勝ち馬の順位分布'},
+  {key:'cal',title:'勝率帯域キャリブレーション'},
+  {key:'two',title:'2歳戦の成績'},
+  {key:'tk',title:'券種別的中（日別×競馬場別）'},
+  {key:'cross',title:'印×人気クロス'}
+];
+var anaView='menu';
+var anaSel={wd:'total',cal:'total',two:'total',tk:'total'};
+function anaTitle(key){var t='';ANA_VIEWS.forEach(function(v){if(v.key===key)t=v.title;});return t;}
+function chipRowHtml(label,items,sel,attr){
+  var h='<nav class="datetabs chiprow" aria-label="'+label+'">';
+  items.forEach(function(it){h+='<button type="button" class="dtab" data-'+attr+'="'+esc(it.v)+'" aria-pressed="'+(sel===it.v)+'">'+esc(it.label)+'</button>';});
+  return h+'</nav>';
+}
+function dateItems(dates){
+  var items=[{v:'total',label:'累計'}];
+  dates.forEach(function(d){items.push({v:d,label:fmtDateLabel(d)});});
+  return items;
+}
+function venueBlocksHtml(rs,innerFn){
+  var h='';var venues=[];rs.forEach(function(r){if(venues.indexOf(r.venue)<0)venues.push(r.venue);});
+  venues.forEach(function(v){
+    var vrs=rs.filter(function(r){return r.venue===v;});
+    h+='<h5 class="markh">'+esc(v)+'（確定<span class="num">'+vrs.length+'</span>レース）</h5>';
+    h+=innerFn(vrs);
   });
   return h;
 }
-function extraViewsHtml(settled){
-  var h='';
-  h+='<h3 class="rech">勝ち馬の順位分布</h3>'
-    +'<p class="vmeta">勝ち馬（1着）が予想勝率の順位で何位だったかの内訳です。</p>'
-    +'<h4 class="markh">累計（確定<span class="num">'+settled.length+'</span>レース）</h4>'
-    +winnerDistTableHtml(winnerDist(settled))
-    +dateVenueBlocks(settled,function(rs){return winnerDistTableHtml(winnerDist(rs));});
-  h+='<h3 class="rech">勝率帯域キャリブレーション</h3>'
-    +'<p class="vmeta">予測勝率と実際の勝率のズレを見るための表です</p>'
-    +'<h4 class="markh">累計（全場）</h4>'
-    +calibTableHtml(calibCounts(settled));
-  var venues=[];settled.forEach(function(r){if(venues.indexOf(r.venue)<0)venues.push(r.venue);});
-  venues.forEach(function(v){
-    var rs=settled.filter(function(r){return r.venue===v;});
-    h+='<h4 class="markh">'+esc(v)+'（確定<span class="num">'+rs.length+'</span>レース）</h4>';
-    h+=calibTableHtml(calibCounts(rs));
-  });
-  var two=settled.filter(function(r){return (r.name||'').indexOf('2歳')>=0;});
-  h+='<h3 class="rech">2歳戦の成績（確定<span class="num">'+two.length+'</span>レース）</h3>'
-    +'<p class="vmeta">レース名に『2歳』を含むレースのみを集計しています。</p>';
-  if(two.length){
-    h+='<h4 class="markh">累計</h4>'+markTableHtml(markCounts(two))+ticketTableHtml(two);
-    DAYS.forEach(function(d){
-      var rs=two.filter(function(r){return r.date===d;});
-      if(!rs.length)return;
-      h+='<h4 class="dvdate">'+fmtDateLabel(d)+' <span class="num" style="font-size:12px;font-weight:400;color:var(--dim)">'+d+'</span> ・ 2歳戦 確定 <span class="num">'+rs.length+'</span> レース</h4>';
-      h+=markTableHtml(markCounts(rs))+ticketTableHtml(rs);
-    });
+function analysisHtml(settled){
+  if(anaView==='menu'){
+    var h='<h3 class="rech">分析メニュー</h3><p class="vmeta">見たいビューを選んでください。各ビューは専用ページで開きます。</p><div class="anamenu">';
+    ANA_VIEWS.forEach(function(v){h+='<button type="button" class="anaitem" data-ana="'+v.key+'"><span>'+esc(v.title)+'</span><span class="arr" aria-hidden="true">›</span></button>';});
+    return h+'</div>';
   }
-  h+='<h3 class="rech">券種別的中（日別×競馬場別）</h3>'
-    +'<p class="vmeta">馬連・ワイド・三連複は、いずれもモデル上位組み合わせの的中回数です。</p>'
-    +'<h4 class="markh">累計（確定<span class="num">'+settled.length+'</span>レース）</h4>'
-    +ticketTableHtml(settled)
-    +dateVenueBlocks(settled,function(rs){return ticketTableHtml(rs);});
-  h+='<h3 class="rech">印×人気クロス</h3>'
-    +crossTableHtml(crossCounts(settled))
-    +'<p class="vmeta">各セルは「頭数（1着の回数）」です。着順が付いていない、または人気の記録が無い印の馬は集計から除いています。</p>';
+  var h='<button type="button" class="backlink" data-anaback="1">‹ 分析メニューに戻る</button>';
+  h+='<h3 class="rech" style="margin-top:6px">'+esc(anaTitle(anaView))+'</h3>';
+  var sdates=DAYS.filter(function(d){return settled.some(function(r){return r.date===d;});});
+  if(anaView==='wd'){
+    var sel=(anaSel.wd==='total'||sdates.indexOf(anaSel.wd)>=0)?anaSel.wd:'total';
+    h+='<p class="vmeta">勝ち馬（1着）が予想勝率の順位で何位だったかの内訳です。</p>';
+    h+=chipRowHtml('表示する日付の選択',dateItems(sdates),sel,'awd');
+    if(sel==='total'){
+      h+='<h4 class="markh">累計（確定<span class="num">'+settled.length+'</span>レース）</h4>'+winnerDistTableHtml(winnerDist(settled));
+    }else{
+      var drs=settled.filter(function(r){return r.date===sel;});
+      h+='<h4 class="dvdate">'+fmtDateLabel(sel)+' <span class="num" style="font-size:12px;font-weight:400;color:var(--dim)">'+sel+'</span> ・ 確定 <span class="num">'+drs.length+'</span> レース</h4>';
+      h+=venueBlocksHtml(drs,function(rs){return winnerDistTableHtml(winnerDist(rs));});
+    }
+  }else if(anaView==='cal'){
+    var venues=[];settled.forEach(function(r){if(venues.indexOf(r.venue)<0)venues.push(r.venue);});
+    var items=[{v:'total',label:'累計'}];venues.forEach(function(v){items.push({v:v,label:v});});
+    var csel=(anaSel.cal==='total'||venues.indexOf(anaSel.cal)>=0)?anaSel.cal:'total';
+    h+='<p class="vmeta">予測勝率と実際の勝率のズレを見るための表です</p>';
+    h+=chipRowHtml('表示する競馬場の選択',items,csel,'acal');
+    if(csel==='total'){
+      h+='<h4 class="markh">累計（全場）</h4>'+calibTableHtml(calibCounts(settled));
+    }else{
+      var vrs=settled.filter(function(r){return r.venue===csel;});
+      h+='<h4 class="markh">'+esc(csel)+'（確定<span class="num">'+vrs.length+'</span>レース）</h4>'+calibTableHtml(calibCounts(vrs));
+    }
+  }else if(anaView==='two'){
+    var two=settled.filter(function(r){return (r.name||'').indexOf('2歳')>=0;});
+    var tdates=DAYS.filter(function(d){return two.some(function(r){return r.date===d;});});
+    var tsel=(anaSel.two==='total'||tdates.indexOf(anaSel.two)>=0)?anaSel.two:'total';
+    h+='<p class="vmeta">レース名に『2歳』を含むレースのみを集計しています（確定<span class="num">'+two.length+'</span>レース）。</p>';
+    h+=chipRowHtml('表示する日付の選択',dateItems(tdates),tsel,'atwo');
+    if(!two.length){
+      h+='<p class="empty">2歳戦の確定レースはまだありません。</p>';
+    }else if(tsel==='total'){
+      h+='<h4 class="markh">累計</h4>'+markTableHtml(markCounts(two))+ticketTableHtml(two);
+    }else{
+      var trs=two.filter(function(r){return r.date===tsel;});
+      h+='<h4 class="markh">'+fmtDateLabel(tsel)+' <span class="num" style="font-size:12px;font-weight:400;color:var(--dim)">'+tsel+'</span> ・ 2歳戦 確定 <span class="num">'+trs.length+'</span> レース</h4>';
+      h+=markTableHtml(markCounts(trs))+ticketTableHtml(trs);
+    }
+  }else if(anaView==='tk'){
+    var ksel=(anaSel.tk==='total'||sdates.indexOf(anaSel.tk)>=0)?anaSel.tk:'total';
+    h+='<p class="vmeta">馬連・ワイド・三連複は、いずれもモデル上位組み合わせの的中回数です。</p>';
+    h+=chipRowHtml('表示する日付の選択',dateItems(sdates),ksel,'atk');
+    if(ksel==='total'){
+      h+='<h4 class="markh">累計（確定<span class="num">'+settled.length+'</span>レース）</h4>'+ticketTableHtml(settled);
+    }else{
+      var krs=settled.filter(function(r){return r.date===ksel;});
+      h+='<h4 class="dvdate">'+fmtDateLabel(ksel)+' <span class="num" style="font-size:12px;font-weight:400;color:var(--dim)">'+ksel+'</span> ・ 確定 <span class="num">'+krs.length+'</span> レース</h4>';
+      h+=venueBlocksHtml(krs,function(rs){return ticketTableHtml(rs);});
+    }
+  }else if(anaView==='cross'){
+    h+=crossTableHtml(crossCounts(settled));
+    h+='<p class="vmeta">各セルは「頭数（1着の回数）」です。着順が付いていない、または人気の記録が無い印の馬は集計から除いています。</p>';
+  }
   return h;
 }
 function renderAnalysis(){
   var el=document.getElementById('analysisView');
   var settled=DATA.races.filter(function(r){return resOf(r)&&resOf(r).judge;});
-  el.innerHTML=extraViewsHtml(settled);
+  el.innerHTML=analysisHtml(settled);
+  el.querySelectorAll('[data-ana]').forEach(function(b){b.onclick=function(){anaView=b.getAttribute('data-ana');renderAnalysis();window.scrollTo(0,0);};});
+  el.querySelectorAll('[data-anaback]').forEach(function(b){b.onclick=function(){anaView='menu';renderAnalysis();window.scrollTo(0,0);};});
+  el.querySelectorAll('[data-awd]').forEach(function(b){b.onclick=function(){anaSel.wd=b.getAttribute('data-awd');renderAnalysis();};});
+  el.querySelectorAll('[data-acal]').forEach(function(b){b.onclick=function(){anaSel.cal=b.getAttribute('data-acal');renderAnalysis();};});
+  el.querySelectorAll('[data-atwo]').forEach(function(b){b.onclick=function(){anaSel.two=b.getAttribute('data-atwo');renderAnalysis();};});
+  el.querySelectorAll('[data-atk]').forEach(function(b){b.onclick=function(){anaSel.tk=b.getAttribute('data-atk');renderAnalysis();};});
 }
 function renderRecord(){
   var el=document.getElementById('recordView');
@@ -601,27 +653,28 @@ function renderRecord(){
     +'<button type="button" class="pill" data-mm="venue" aria-pressed="'+(markMode==='venue')+'">競馬場別</button>'
     +'<button type="button" class="pill" data-mm="datevenue" aria-pressed="'+(markMode==='datevenue')+'">日別×競馬場別</button></nav>'
     +'<p class="vmeta">対象：結果確定済み '+settled.length+' レース。印は予想勝率の順位で、◎=1位、○=2位、▲=3位、△=4位、☆=5位、注=6位。セルはその着順になった回数です。競走中止・出走取消・競走除外や着順未公表の馬は集計から除くため、注の合計は143頭です。</p>';
+  var sdates=DAYS.filter(function(d){return settled.some(function(r){return r.date===d;});});
+  var selMarkDate=(markDate&&sdates.indexOf(markDate)>=0)?markDate:sdates[0];
+  if(markMode==='date'||markMode==='datevenue'){
+    h+='<nav class="datetabs chiprow" aria-label="日付の選択">';
+    sdates.forEach(function(d){h+='<button type="button" class="dtab num" data-md="'+d+'" aria-pressed="'+(selMarkDate===d)+'">'+fmtDateLabel(d)+'</button>';});
+    h+='</nav>';
+  }
   if(markMode==='total'){
     h+=markTableHtml(markCounts(settled));
   }else if(markMode==='date'){
-    DAYS.forEach(function(d){
-      var rs=settled.filter(function(r){return r.date===d;});
-      if(!rs.length)return;
-      h+='<h4 class="markh">'+fmtDateLabel(d)+' <span class="num" style="font-size:12px;font-weight:400;color:var(--dim)">'+d+'</span> ・ 確定 <span class="num">'+rs.length+'</span> レース</h4>';
-      h+=markTableHtml(markCounts(rs));
-    });
+    var rs=settled.filter(function(r){return r.date===selMarkDate;});
+    h+='<h4 class="markh">'+fmtDateLabel(selMarkDate)+' <span class="num" style="font-size:12px;font-weight:400;color:var(--dim)">'+selMarkDate+'</span> ・ 確定 <span class="num">'+rs.length+'</span> レース</h4>';
+    h+=markTableHtml(markCounts(rs));
   }else if(markMode==='datevenue'){
     h+='<p class="vmeta">着順が公表されなかった印の馬は集計から除いています（既存の印別成績と同じ扱い）</p>';
-    DAYS.forEach(function(d){
-      var drs=settled.filter(function(r){return r.date===d;});
-      if(!drs.length)return;
-      h+='<h4 class="dvdate">'+fmtDateLabel(d)+' <span class="num" style="font-size:12px;font-weight:400;color:var(--dim)">'+d+'</span> ・ 確定 <span class="num">'+drs.length+'</span> レース</h4>';
-      var dvenues=[];drs.forEach(function(r){if(dvenues.indexOf(r.venue)<0)dvenues.push(r.venue);});
-      dvenues.forEach(function(v){
-        var rs=drs.filter(function(r){return r.venue===v;});
-        h+='<h5 class="markh">'+esc(v)+'（確定<span class="num">'+rs.length+'</span>レース）</h5>';
-        h+=markTable4Html(markCounts4(rs));
-      });
+    var drs=settled.filter(function(r){return r.date===selMarkDate;});
+    h+='<h4 class="dvdate">'+fmtDateLabel(selMarkDate)+' <span class="num" style="font-size:12px;font-weight:400;color:var(--dim)">'+selMarkDate+'</span> ・ 確定 <span class="num">'+drs.length+'</span> レース</h4>';
+    var dvenues=[];drs.forEach(function(r){if(dvenues.indexOf(r.venue)<0)dvenues.push(r.venue);});
+    dvenues.forEach(function(v){
+      var vrs=drs.filter(function(r){return r.venue===v;});
+      h+='<h5 class="markh">'+esc(v)+'（確定<span class="num">'+vrs.length+'</span>レース）</h5>';
+      h+=markTable4Html(markCounts4(vrs));
     });
   }else{
     var venues=[];settled.forEach(function(r){if(venues.indexOf(r.venue)<0)venues.push(r.venue);});
@@ -672,6 +725,9 @@ function renderRecord(){
   el.innerHTML=h;
   el.querySelectorAll('[data-mm]').forEach(function(b){
     b.onclick=function(){markMode=b.getAttribute('data-mm');renderRecord();};
+  });
+  el.querySelectorAll('[data-md]').forEach(function(b){
+    b.onclick=function(){markDate=b.getAttribute('data-md');renderRecord();};
   });
 }
 function mondayOf(date){var p=date.split('-').map(Number);var d=new Date(Date.UTC(p[0],p[1]-1,p[2]));var dow=(d.getUTCDay()+6)%7;d.setUTCDate(d.getUTCDate()-dow);return d;}
