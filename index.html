@@ -157,6 +157,7 @@ main{padding-bottom:40px}
 .marktable td.mk{font-size:16px;font-weight:700;text-align:center}
 .marktable td.mk.first{color:var(--red)}
 .markh{margin:18px 0 0;font-size:15px;font-weight:700}
+.dvdate{margin:22px 0 0;font-size:16px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:4px}
 .snapwrap{display:flex;flex-direction:column;gap:4px}
 .updbtn{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:3px 8px;font-size:12px;font-weight:600;white-space:nowrap}
 .updnote{margin:2px 0 0;font-size:11px;color:var(--dim);line-height:1.5}
@@ -417,6 +418,30 @@ function markTableHtml(mc){
   });
   return h+'</table></div>';
 }
+function markCounts4(rs){
+  var mc={};MARKS6.forEach(function(mk){mc[mk]=[0,0,0,0];});
+  rs.forEach(function(r){
+    var res=resOf(r);if(!res||!res.finish)return;
+    var fin={};res.finish.forEach(function(f){fin[f.n]=f.pos;});
+    var hs=r.horses.slice().sort(function(a,b){return b.win-a.win;});
+    for(var i=0;i<MARKS6.length&&i<hs.length;i++){
+      var p=fin[hs[i].n];
+      if(!p)continue;
+      mc[MARKS6[i]][p===1?0:p===2?1:p===3?2:3]++;
+    }
+  });
+  return mc;
+}
+function markTable4Html(mc){
+  var h='<div class="vtablewrap"><table class="vtable marktable"><tr><th>印</th><th class="n">1着</th><th class="n">2着</th><th class="n">3着</th><th class="n">4着以下</th><th class="n">合計</th></tr>';
+  MARKS6.forEach(function(mk,mi){
+    var c=mc[mk],t=0;c.forEach(function(x){t+=x;});
+    h+='<tr><td class="mk'+(mi===0?' first':'')+'">'+mk+'</td>';
+    c.forEach(function(x){h+='<td class="n num">'+x+'</td>';});
+    h+='<td class="n num">'+t+'</td></tr>';
+  });
+  return h+'</table></div>';
+}
 function renderRecord(){
   var el=document.getElementById('recordView');
   var settled=DATA.races.filter(function(r){return resOf(r)&&resOf(r).judge;});
@@ -430,7 +455,8 @@ function renderRecord(){
     +'<nav class="filters" aria-label="印別成績の表示切り替え" style="margin-top:12px">'
     +'<button type="button" class="pill" data-mm="total" aria-pressed="'+(markMode==='total')+'">累計</button>'
     +'<button type="button" class="pill" data-mm="date" aria-pressed="'+(markMode==='date')+'">日別</button>'
-    +'<button type="button" class="pill" data-mm="venue" aria-pressed="'+(markMode==='venue')+'">競馬場別</button></nav>'
+    +'<button type="button" class="pill" data-mm="venue" aria-pressed="'+(markMode==='venue')+'">競馬場別</button>'
+    +'<button type="button" class="pill" data-mm="datevenue" aria-pressed="'+(markMode==='datevenue')+'">日別×競馬場別</button></nav>'
     +'<p class="vmeta">対象：結果確定済み '+settled.length+' レース。印は予想勝率の順位で、◎=1位、○=2位、▲=3位、△=4位、☆=5位、注=6位。セルはその着順になった回数です。競走中止・出走取消・競走除外や着順未公表の馬は集計から除くため、注の合計は124頭です。</p>';
   if(markMode==='total'){
     h+=markTableHtml(markCounts(settled));
@@ -440,6 +466,19 @@ function renderRecord(){
       if(!rs.length)return;
       h+='<h4 class="markh">'+fmtDateLabel(d)+' <span class="num" style="font-size:12px;font-weight:400;color:var(--dim)">'+d+'</span> ・ 確定 <span class="num">'+rs.length+'</span> レース</h4>';
       h+=markTableHtml(markCounts(rs));
+    });
+  }else if(markMode==='datevenue'){
+    h+='<p class="vmeta">着順が公表されなかった印の馬は集計から除いています（既存の印別成績と同じ扱い）</p>';
+    DAYS.forEach(function(d){
+      var drs=settled.filter(function(r){return r.date===d;});
+      if(!drs.length)return;
+      h+='<h4 class="dvdate">'+fmtDateLabel(d)+' <span class="num" style="font-size:12px;font-weight:400;color:var(--dim)">'+d+'</span> ・ 確定 <span class="num">'+drs.length+'</span> レース</h4>';
+      var dvenues=[];drs.forEach(function(r){if(dvenues.indexOf(r.venue)<0)dvenues.push(r.venue);});
+      dvenues.forEach(function(v){
+        var rs=drs.filter(function(r){return r.venue===v;});
+        h+='<h5 class="markh">'+esc(v)+'（確定<span class="num">'+rs.length+'</span>レース）</h5>';
+        h+=markTable4Html(markCounts4(rs));
+      });
     });
   }else{
     var venues=[];settled.forEach(function(r){if(venues.indexOf(r.venue)<0)venues.push(r.venue);});
