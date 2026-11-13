@@ -162,6 +162,9 @@ main{padding-bottom:40px}
 .updbtn{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:3px 8px;font-size:12px;font-weight:600;white-space:nowrap}
 .updnote{margin:2px 0 0;font-size:11px;color:var(--dim);line-height:1.5}
 .snapnote{margin:4px 0 0;font-size:11px;color:var(--dim);line-height:1.6;overflow-wrap:break-word}
+.snapdetail{margin:2px 0 0;font-size:11px;color:var(--dim);line-height:1.6}
+.snapdetail summary{cursor:pointer;font-size:11px;color:var(--dim)}
+.snapdetail p{margin:4px 0 0;font-size:11px;color:var(--dim);line-height:1.6;overflow-wrap:break-word}
 .vnote{margin-top:8px;font-size:12.5px;color:var(--dim);line-height:1.7}
 .vtext{margin-top:8px;font-size:14px;line-height:1.8}
 .hlgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-top:8px}
@@ -194,8 +197,12 @@ footer.site p{margin:0 0 6px}
       <button type="button" class="updbtn" id="reloadBtn">最新版を表示</button>
     </div>
   </div>
-  <p class="snapnote">非公開サイト「競馬予想 全レース」から 2026-11-13 19:00 JST 時点で取得した全日分の予想＋確定結果。listdays: 2026-11-13 locked 46 / validated 33, 2026-11-12 locked 48 / validated 48, 2026-11-11 locked 48 / validated 48, 2026-11-08 locked 2 / validated 2, 2026-11-07 locked 3 / validated 3。通算成績はレース単位の確定記録から再集計し、非公開サイトの getrecord と完全一致（確定134レース：◎24勝・3着内58、馬連9、三連複6、ワイド20）。印別成績は非公開サイトの getmarkstats と完全一致。着順未公表のため集計から除外した印: 2026-11-13 名古屋2R △（サンマルフォース）の着順未公表、2026-11-13 名古屋2R ☆（パープルルージュ）の着順未公表、2026-11-13 名古屋2R 注（ロジスクリーン）の着順未公表、2026-11-13 金沢1R ○（ヴィオラダンサー）の着順未公表、2026-11-13 園田11R 注（シークレットロゴ）の着順未公表、2026-11-13 川崎4R △（マティーニ）の着順未公表、2026-11-13 園田12R ◎（タガノハスビナー）の着順未公表、2026-11-13 園田12R △（アドーネ）の着順未公表、2026-11-13 園田12R ☆（グリッタードール）の着順未公表、2026-11-13 園田12R 注（コスモカピタン）の着順未公表、2026-11-12 門別11R ○（ローマンリープ）の着順未公表、2026-11-11 名古屋5R 注（マオノファースト）の着順未公表。</p>
+  <p class="snapnote">2026-11-13 19:00 JST 時点のスナップショット ｜ 確定134レース ｜ 対象：中央・地方の全レース（帯広は対象外）</p>
   <p class="updnote">公開版はスナップショットです。新しい結果は定期的に取り込んで再公開しています</p>
+  <details class="snapdetail">
+    <summary>データについて（詳細）</summary>
+    <p>非公開サイト「競馬予想 全レース」から 2026-11-13 19:00 JST 時点で取得した全日分の予想＋確定結果。listdays: 2026-11-13 locked 46 / validated 33, 2026-11-12 locked 48 / validated 48, 2026-11-11 locked 48 / validated 48, 2026-11-08 locked 2 / validated 2, 2026-11-07 locked 3 / validated 3。通算成績はレース単位の確定記録から再集計し、非公開サイトの getrecord と完全一致（確定134レース：◎24勝・3着内58、馬連9、三連複6、ワイド20）。印別成績は非公開サイトの getmarkstats と完全一致。着順未公表のため集計から除外した印: 2026-11-13 名古屋2R △（サンマルフォース）の着順未公表、2026-11-13 名古屋2R ☆（パープルルージュ）の着順未公表、2026-11-13 名古屋2R 注（ロジスクリーン）の着順未公表、2026-11-13 金沢1R ○（ヴィオラダンサー）の着順未公表、2026-11-13 園田11R 注（シークレットロゴ）の着順未公表、2026-11-13 川崎4R △（マティーニ）の着順未公表、2026-11-13 園田12R ◎（タガノハスビナー）の着順未公表、2026-11-13 園田12R △（アドーネ）の着順未公表、2026-11-13 園田12R ☆（グリッタードール）の着順未公表、2026-11-13 園田12R 注（コスモカピタン）の着順未公表、2026-11-12 門別11R ○（ローマンリープ）の着順未公表、2026-11-11 名古屋5R 注（マオノファースト）の着順未公表。</p>
+  </details>
   <div class="tabrow">
     <button type="button" class="tabbtn" id="tabRaces" aria-pressed="true">予想</button>
     <button type="button" class="tabbtn" id="tabWeek" aria-pressed="false">週間</button>
