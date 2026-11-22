@@ -8,7 +8,14 @@
 <title>競馬予想 全レース 公開版</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
+<script>
+window.__kbBoot=false;
+window.addEventListener('load',function(){setTimeout(function(){
+  if(!window.__kbBoot){var b=document.getElementById('bootFallback');if(b)b.style.display='block';}
+},6000);});
+</script>
 <style>
 :root{
   color-scheme:light dark;
@@ -194,6 +201,12 @@ footer.site p{margin:0 0 6px}
 .scopelabel{font-size:12px;font-weight:600;color:var(--dim);padding-top:5px;white-space:nowrap}
 .scoperow .datetabs{padding:0}
 .hidden{display:none}
+.bootfallback{margin:16px 0 0;border:1px solid var(--red);border-radius:var(--radius);
+  background:var(--surface);padding:12px 16px;font-size:14px;line-height:1.7}
+.bootfallback p{margin:0 0 8px}
+.bootfallback p:last-child{margin-bottom:0}
+.bootfallback a{color:var(--accent);font-weight:600}
+.loading{padding:24px 0;color:var(--dim);font-size:14px}
 .spot{margin-top:12px;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:10px 14px 12px}
 .spot-h{margin:0;font-size:15px;font-weight:700}
 .spot-grid{display:grid;gap:2px 24px}
@@ -245,7 +258,12 @@ footer.site p{margin:0 0 6px}
     <p>対象範囲：中央競馬（JRA）と地方競馬（NAR）の全レース。ただし帯広（ばんえい競馬）は対象外です。</p>
     <p>モンテカルロ・シミュレーション（10万回）による全レース予想と、発走前に固定（LOCK）した予測の事後検証を公開するページです。</p>
   </div>
-  <div id="raceView"></div>
+  <div id="bootFallback" class="bootfallback" style="display:none">
+    <p>予想データの読み込みが完了しませんでした。通信状況によっては、表示まで時間がかかることがあります。</p>
+    <p><button type="button" class="navbtn" onclick="location.reload()">再読み込み</button></p>
+    <p>同じ内容は公開サイトでも見られます：<a href="https://payrq1n.github.io/keiba-yoso/">payrq1n.github.io/keiba-yoso</a></p>
+  </div>
+  <div id="raceView"><p class="loading">読み込み中…</p></div>
   <section id="recordView" class="hidden" aria-label="通算成績・検証"></section>
   <section id="weekView" class="hidden" aria-label="週間成績"></section>
   <section id="analysisView" class="hidden" aria-label="分析"></section>
@@ -1039,7 +1057,7 @@ function render(){
   rv.classList.remove('hidden');
   renderRaces();
 }
-render();
+try{render();window.__kbBoot=true;}catch(err){var bf=document.getElementById('bootFallback');if(bf)bf.style.display='block';}
 </script>
 </body>
 </html>
