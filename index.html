@@ -176,9 +176,13 @@ footer.site p{margin:0 0 6px}
 .datetabs{display:flex;flex-wrap:wrap;gap:6px;padding:0 0 10px}
 .dtab{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:3px 12px;font-size:13px;color:var(--dim)}
 .dtab[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
-#dateTabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+#dateTabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;scroll-behavior:smooth}
 #dateTabs::-webkit-scrollbar{display:none}
 #dateTabs .dtab{flex:none;white-space:nowrap}
+.datebar{display:flex;align-items:flex-start;gap:4px}
+.datebar #dateTabs{flex:1 1 auto;min-width:0}
+.dscroll{flex:none;width:30px;height:32px;border:1px solid var(--border);background:var(--surface);border-radius:999px;font-size:17px;line-height:1;color:var(--dim);cursor:pointer;padding:0}
+.dscroll:disabled{opacity:.3;cursor:default}
 .dayjump{margin-left:8px;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:2px 10px;font-size:12px;font-weight:600;min-height:28px}
 @media(max-width:560px){.tabbtn{font-size:13px;padding:4px 6px}}
 .anamenu{margin-top:12px;display:flex;flex-direction:column;gap:8px}
@@ -229,7 +233,11 @@ footer.site p{margin:0 0 6px}
     <button type="button" class="tabbtn" id="tabAnalysis" aria-pressed="false">分析</button>
     <button type="button" class="tabbtn" id="tabModel" aria-pressed="false">モデル</button>
   </div>
-  <nav class="datetabs" id="dateTabs" aria-label="日付タブ"></nav>
+  <div class="datebar" id="dateBar">
+    <button type="button" class="dscroll" id="dtabNewer" aria-label="新しい日付のタブへ移動">‹</button>
+    <nav class="datetabs" id="dateTabs" aria-label="日付タブ"></nav>
+    <button type="button" class="dscroll" id="dtabOlder" aria-label="古い日付のタブへ移動">›</button>
+  </div>
 </div></header>
 <div class="wrap">
 <main>
@@ -308,16 +316,23 @@ function renderHeader(){
   document.getElementById('tabAnalysis').setAttribute('aria-pressed',state.tab==='analysis'?'true':'false');
   document.getElementById('tabModel').setAttribute('aria-pressed',state.tab==='model'?'true':'false');
   var dt=document.getElementById('dateTabs');
+  var dbar=document.getElementById('dateBar');
   if(state.tab==='races'){
-    dt.classList.remove('hidden');
+    dbar.classList.remove('hidden');
     var dh='';
     DAYS.forEach(function(d){dh+='<button type="button" class="dtab num" data-dtab="'+d+'" aria-pressed="'+(state.date===d)+'">'+fmtDateLabel(d)+'</button>';});
     dt.innerHTML=dh;
     dt.querySelectorAll('[data-dtab]').forEach(function(b){b.onclick=function(){state.date=b.getAttribute('data-dtab');state.venue=null;render();};});
     var act=dt.querySelector('[data-dtab][aria-pressed="true"]');
     if(act){dt.scrollLeft=Math.max(0,act.offsetLeft-dt.offsetLeft-6);}
+    var dNewer=document.getElementById('dtabNewer'),dOlder=document.getElementById('dtabOlder');
+    var updD=function(){var max=dt.scrollWidth-dt.clientWidth;dNewer.disabled=dt.scrollLeft<=1;dOlder.disabled=max<=0||dt.scrollLeft>=max-1;};
+    dNewer.onclick=function(){dt.scrollBy({left:-Math.max(160,dt.clientWidth*0.8),behavior:'smooth'});setTimeout(updD,400);};
+    dOlder.onclick=function(){dt.scrollBy({left:Math.max(160,dt.clientWidth*0.8),behavior:'smooth'});setTimeout(updD,400);};
+    dt.onscroll=updD;
+    updD();
   }else{
-    dt.classList.add('hidden');
+    dbar.classList.add('hidden');
   }
 }
 document.getElementById('prevDay').onclick=function(){var idx=DAYS.indexOf(state.date);if(DAYS[idx+1]){state.date=DAYS[idx+1];state.venue=null;render();}};
